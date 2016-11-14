@@ -79,7 +79,7 @@ OptionParser.new do |opts|
 end.parse!
 
 
-if options[:payment_id] == ""
+if options[:payment_id] == nil && options[:recipient_name] == nil
      abort("Please supply a valid recipient name.")
 end
 
@@ -100,7 +100,7 @@ when options[:pay]
     pay_recipient(options[:recipient_name], options[:amount],
                   options[:currency])
 
-when options[:payment_id] != ""
+when options[:payment_id] != nil
     puts "Checking payment:\t#{options[:payment_id]}"
     status = Payment.get_payment_status(options[:payment_id])
     puts "Payment status:\t\t#{status}"
