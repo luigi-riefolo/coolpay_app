@@ -1,0 +1,109 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'bundler/setup'
+require 'coolpay_app'
+
+
+options = {}
+@session = nil
+
+def init
+    session = Session.new
+end
+
+# Create and and a new recipient,
+# if it does not already exist
+def add_recipient(name)
+    puts "Recipient name:\t\t#{name}"
+    if Recipient.recipient_exist(name)
+        puts "Recipient already exists"
+        recipient_id = Recipient.get_recipient_id(name)
+    else
+        puts "Adding new recipient..."
+        recipient_id = Recipient.add_recipient(name)
+    end
+    puts "#{name} has ID:\t\t#{recipient_id}"
+end
+
+def pay_recipient(recipient_name, amount, currency)
+    recipient_id = Recipient.get_recipient_id(recipient_name)
+    puts "Sending #{amount} #{currency} to recipient #{recipient_name}"
+    payment_id = Payment.make_payment(amount, currency, recipient_id)
+    puts "Payment ID:\t\t#{payment_id}"
+    status = Payment.get_payment_status(payment_id)
+    puts "Payment status:\t\t#{status}"
+end
+
+def abort(msg)
+    puts msg
+    exit 1
+end
+
+ARGV << '-h' if ARGV.empty?
+
+OptionParser.new do |opts|
+    opts.banner = 'Usage: coolpay --recipient NAME [options]'
+
+    opts.on('-rNAME', '--recipient=NAME', 'Recipient name.') do |name|
+        options[:recipient_name] = name
+    end
+
+    opts.on('-a', '--add', 'Add new recipient.') do |add|
+        options[:add_recipient] = add
+    end
+
+    opts.on('-p', '--pay', 'Pay recipient.') do |pay|
+        options[:pay] = pay
+    end
+
+    opts.on('-n=AMOUNT', '--amount=AMOUNT',
+            'Amount to send to the recipient.') do |amount|
+        options[:amount] = amount
+    end
+
+    opts.on('-c=CURRENCY', '--currency=CURRENCY',
+            'Currency to use for the payment.') do |currency|
+        options[:currency] = currency
+    end
+
+    opts.on('-iID', '--payment-id=ID',
+            'Check whether a payment was successful.') do |id|
+         options[:payment_id] = id
+    end
+
+    opts.on('-h', '--help', 'Prints this help.') do
+        puts opts
+        exit
+    end
+end.parse!
+
+
+if options[:payment_id] == ""
+     abort("Please supply a valid recipient name.")
+end
+
+# Get an authorization token
+init
+
+case true
+when options[:add_recipient]
+    add_recipient(options[:recipient_name])
+
+when options[:pay]
+    unless options[:amount]
+        abort("Please supply a valid payment amount.")
+    end
+    unless options[:currency]
+        abort("Please supply a valid currency, e.g. GBP.")
+    end
+    pay_recipient(options[:recipient_name], options[:amount],
+                  options[:currency])
+
+when options[:payment_id] != ""
+    puts "Checking payment:\t#{options[:payment_id]}"
+    status = Payment.get_payment_status(options[:payment_id])
+    puts "Payment status:\t\t#{status}"
+end
+
+exit
